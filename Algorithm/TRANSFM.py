@@ -119,10 +119,12 @@ if __name__ == '__main__':
 
     set01 = []
     set02 = []
-    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
+    filePath = os.path.abspath(".") + os.path.sep + '..'
+    path = os.path.join(filePath, 'Resource')
     for i in range(9):
         file = "SAMPLE0{}".format(i)
         name = os.path.join(path, file + '.png')
+        print(name)
         if i < 4:
             set01.append(name)
         if i > 4:
