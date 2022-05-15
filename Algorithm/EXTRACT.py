@@ -2,6 +2,7 @@ import numpy as np
 from FUNCS import FNS
 from scipy import ndimage as nd
 
+
 # variable class
 class CorxVar:
     def __init__(self, img_input, size, orient, scale, gain):

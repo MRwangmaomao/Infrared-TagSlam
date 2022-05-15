@@ -7,6 +7,7 @@ from scipy import ndimage as nd
 from FUNCS import FNS
 from TESTS import VisTstVar, VisTstFun
 
+
 class SptVar:
     def __init__(self, size, num, gain, scale):
         self.num = num
@@ -31,7 +32,6 @@ class SptFun:
         # images in either position, orientation, or scaling, and test each type of spatial information separately
 
         self.img_center = (int(self.img_size[0] / 2), int(self.img_size[1] / 2))
-
 
     def Preproc(self, name):
 
@@ -102,8 +102,6 @@ class SptFun:
         return posit  # there is a total of 27 spatially transformed images for each type
 
 
-
-
 if __name__ == '__main__':
     fig, ax = plt.subplots(2, 4)
     size = 50
@@ -119,17 +117,14 @@ if __name__ == '__main__':
 
     set01 = []
     set02 = []
-    filePath = os.path.abspath(".") + os.path.sep + '..'
-    path = os.path.join(filePath, 'Resource')
+    dirPath = os.path.join(os.path.abspath(".") + os.path.sep + '..', 'Resource')
     for i in range(9):
         file = "SAMPLE0{}".format(i)
-        name = os.path.join(path, file + '.png')
-        print(name)
+        name = os.path.join(dirPath, file + '.png')
         if i < 4:
             set01.append(name)
         if i > 4:
             set02.append(name)
-
 
     seq01 = []
     seq02 = []

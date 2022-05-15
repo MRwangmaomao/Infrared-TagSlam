@@ -30,8 +30,8 @@ if __name__ == '__main__':
 
 
     # ----------------------------
-    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
-    pick = name = os.path.join(path, "marker_07" + '.png')
+    dirPath = os.path.join(os.path.abspath(".") + os.path.sep + '..', 'Resource')
+    pick = name = os.path.join(dirPath, "marker_07" + '.png')
     # ----------------------------
 
 
