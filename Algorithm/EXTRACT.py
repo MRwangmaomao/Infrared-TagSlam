@@ -16,7 +16,7 @@ class CorxVar:
         self.lgnn = self.LGN(size)
         self.simp = self.Simple(size, orient, scale)
         self.cmpx = self.Complex(size, orient, scale)
-        self.summ = self.ActvSum(size)
+        self.coord = self.CoordSys(size)
 
     class LGN:
         def __init__(self, size):
@@ -48,16 +48,18 @@ class CorxVar:
                 for k in range(orient):
                     self.comb_map[s, k] = np.zeros((2 * size, 2 * size))
 
-    class ActvSum:
+    class CoordSys:
         def __init__(self, size):
             self.sum_map = np.zeros((2 * size, 2 * size))
+            self.invert_map = np.zeros((2 * size, 2 * size))
+
             self.rot_ang = 0
 
             # it is a pair of points in x-direction and y-direction
             self.max_x = np.zeros((2, 2))
             self.max_y = np.zeros((2, 2))
 
-
+            # recover the 4 points w/ holes
 
 
 
@@ -129,7 +131,8 @@ class CorxFun:
                                             self.Corx.simp.right_on[s, k] + self.Corx.simp.right_off[s, k]
 
 
-    def ActvSum(self):
+    # extract the coordinate system and compute the angle of rotation
+    def CoordSys(self):
         FNS = self.FNS
         size = self.size
         num = self.num
@@ -152,16 +155,29 @@ class CorxFun:
 
         sum_map = FNS.thresh_fn((comb_rat / comb_max) ** 2, 0.55)
 
-        self.Corx.summ.sum_map = sum_map
+        self.Corx.coord.sum_map = sum_map
+
+
+        # extract the coordinate system
 
         # find points w/ largest distance in x-direction and y-direction, e.g., this requires comparing each point
         # in the image w/ every point in another copy of the image, each update stores a pair of points
         for j in range(2 * size):
             for i in range(2 * size):
                 if sum_map[j][i] > 0.01:
-                    pass
+                    for q in range(2 * size):
+                        for p in range(2 * size):
+                            if sum_map[q][p] > 0.01:
+                                pass
 
 
 
+        # compute the angle of rotation
 
 
+    def CoordSys01(self):
+        input = self.Corx.img
+        FNS = self.FNS
+        size = self.size
+        on_size = (size / 30) * 2
+        self.Corx.coord.invert_map = FNS.circ_map(input, on_size, size)

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import random
 from PIL import Image
@@ -116,18 +117,26 @@ if __name__ == '__main__':
     TstVar = VisTstVar(ax, size)
     Tst = VisTstFun(TstVar)
 
-    car_name = ("MICRO.png", "VAN.png", "BIG_TRUCK.png", "ROADSTER.png")
-    pla_name = ("11plane.jpg", "14plane.jpg", "24plane.jpg", "41plane.jpg")
+    set01 = []
+    set02 = []
+    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
+    for i in range(9):
+        file = "SAMPLE0{}".format(i)
+        name = os.path.join(path, file + '.png')
+        if i < 4:
+            set01.append(name)
+        if i > 4:
+            set02.append(name)
 
 
-    car_seq = []
-    pla_seq = []
+    seq01 = []
+    seq02 = []
     for i in range(4):
-        car_seq.append(random.choice(Spt.Preproc(car_name[i])))
-        pla_seq.append(random.choice(Spt.Preproc(pla_name[i])))
+        seq01.append(random.choice(Spt.Preproc(set01[i])))
+        seq02.append(random.choice(Spt.Preproc(set02[i])))
 
-    data_S = [car_seq[i] for i in range(4)]
-    data_L = [pla_seq[i] for i in range(4)]
+    data_S = [seq01[i] for i in range(4)]
+    data_L = [seq02[i] for i in range(4)]
 
     data = data_S, data_L
     Tst.Simple(data)

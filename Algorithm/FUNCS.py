@@ -83,6 +83,10 @@ class FNS:
         out = self.cfns.circ_map(map, s, size)
         return out
 
+    def invert_map(self, map, s, size):
+        out = self.cfns.invert_map(map, s, size)
+        return out
+
     def lgnn_map(self, map, s, num, size):
         out = self.cfns.gauss_map(map, 0, s, 0, num, size)
         return out

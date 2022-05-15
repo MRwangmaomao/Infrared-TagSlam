@@ -450,6 +450,22 @@ cdef class CyFns:
                 out_view[j][i] = accum / self.circ_norm(j, i, s, 2 * size)
         return out
 
+    @cython.cdivision(True)
+    def invert_map(self, double[:, :] map, int s, int size):
+        out = np.zeros((2 * size, 2 * size), dtype=np.float64)
+        cdef double[:, :] out_view = out
+        cdef double[:, :] map_view = map
+        cdef Py_ssize_t j, i, q, p
+        cdef double accum
+        for j in range(2 * size):
+            for i in range(2 * size):
+                accum = 0
+                for q in range(max(j - s, 0), min(j + s, 2 * size)):
+                    for p in range(max(i - s, 0), min(i + s, 2 * size)):
+                        if map_view[q][p] > 0.01:
+                            accum += (1 / map_view[q][p]) * self.circ_grad(q, p, j, i, s)
+                out_view[j][i] = accum / self.circ_norm(j, i, s, 2 * size)
+        return out
 
 
 

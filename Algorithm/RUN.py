@@ -1,13 +1,13 @@
 import numpy as np
-import random
+import random, os
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from FUNCS import FNS
-from CORTXb import CorxVar, CorxFun
-from ARTMAPb import ArtVar, ArtFun
-from SPTMAPb import SptVar, SptFun
+from EXTRACT import CorxVar, CorxFun
+from CLASSFY import ArtVar, ArtFun
+from TRANSFM import SptVar, SptFun
 from TESTS import BasTstVar, BasTstFun
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -29,8 +29,17 @@ if __name__ == '__main__':
     bot_para = para
     top_para = para
 
-    car_name = ("MICRO.png", "VAN.png", "BIG_TRUCK.png", "ROADSTER.png")
-    pla_name = ("11plane.jpg", "14plane.jpg", "24plane.jpg", "41plane.jpg")
+    set01 = []
+    set02 = []
+    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
+    for i in range(9):
+        file = "SAMPLE0{}".format(i)
+        name = os.path.join(path, file + '.png')
+        if i < 4:
+            set01.append(name)
+        if i > 4:
+            set02.append(name)
+
 
     top_zeros = np.zeros((top_num))
     top_zeros[0] = 1
@@ -48,10 +57,10 @@ if __name__ == '__main__':
     Spt = SptFun(SptVar)
 
     label = np.random.randint(0, 2)
-    pick = FNS().delta_fn(label, 0) * random.choice(car_name) + FNS().delta_fn(label, 1) * random.choice(pla_name)
+    pick = FNS().delta_fn(label, 0) * random.choice(set01) + FNS().delta_fn(label, 1) * random.choice(set02)
     #img_load = Image.open(pick)
     #img_gray = img_load.convert('L')  # convert image to grayscale
-    img_gray = random.choice(Spt.Preproc("MICRO.png"))  # first input is car to be compatible w/ the label definitions
+    img_gray = random.choice(Spt.Preproc(set01[0]))  # first input is car to be compatible w/ the label definitions
     img_resize = img_gray.resize((2 * size, 2 * size))
     img_norm = np.array(img_resize) / 255  # normalize it btw 0 and 1
 
@@ -72,7 +81,7 @@ if __name__ == '__main__':
         if t > 0:
             CorxVar.label = np.random.randint(0, 2)
             label = CorxVar.label
-            pick = FNS().delta_fn(label, 0) * random.choice(car_name) + FNS().delta_fn(label, 1) * random.choice(pla_name)
+            pick = FNS().delta_fn(label, 0) * random.choice(set01) + FNS().delta_fn(label, 1) * random.choice(set02)
             #img_load = Image.open(pick)
             #img_gray = img_load.convert('L')
             img_gray = random.choice(Spt.Preproc(pick))
@@ -124,8 +133,8 @@ if __name__ == '__main__':
         score = ArtVar.score
 
         # be careful, it depends if the first category is car or plane
-        label = "car" * FNS().delta_fn(crs_predict, car_label) + "plane" * FNS().delta_fn(crs_predict, pla_label)
-        #label = "car" * FNS().delta_fn(top_predict, car_label) + "plane" * FNS().delta_fn(top_predict, pla_label)
+        label = "set01" * FNS().delta_fn(crs_predict, car_label) + "set02" * FNS().delta_fn(crs_predict, pla_label)
+        #label = "set01" * FNS().delta_fn(top_predict, car_label) + "set02" * FNS().delta_fn(top_predict, pla_label)
 
         text = count, active, score, label
         Tst.RealTime(data, text)
@@ -146,7 +155,11 @@ if __name__ == '__main__':
 """
 To-do:
 
-1. generate sample pattern w/ no repeat, assign id, and save 5-10 samples
+0. write api for each file, e.g., input, output, and connect the files to be able to run the algorithm and get the
+results 
+
+1. generate sample pattern w/ no repeat, assign id, and save 5-10 samples; remove rectangle outline, insert hexagon
+outline
 
 2. apply translation, rotation, and resizing to stored samples for testing classification using ARTMAP
 

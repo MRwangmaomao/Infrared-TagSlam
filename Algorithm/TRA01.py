@@ -1,10 +1,10 @@
 import numpy as np
-import random
+import random, os
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from CORTXb import CorxVar, CorxFun
+from EXTRACT import CorxVar, CorxFun
 from TESTS import VisTstVar, VisTstFun
 from FUNCS import FNS
 
@@ -30,7 +30,8 @@ if __name__ == '__main__':
 
 
     # ----------------------------
-    pick = "marker_07.png"
+    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
+    pick = name = os.path.join(path, "marker_07" + '.png')
     # ----------------------------
 
 
@@ -55,12 +56,9 @@ if __name__ == '__main__':
     Corx.LGN()
     Corx.Simple()
     Corx.Complex()
-    Corx.ActvSum()
-    #Corx.TargPosn()
-    #Corx.Hypercomplex()
-    #Corx.Bipole()
+    Corx.CoordSys()
 
-
+    """
     lgn_on = CorxVar.lgnn.on_map
     lgn_off = CorxVar.lgnn.off_map
     left_on = CorxVar.simp.left_on
@@ -68,46 +66,17 @@ if __name__ == '__main__':
     right_on = CorxVar.simp.right_on
     right_off = CorxVar.simp.right_off
     complex = CorxVar.cmpx.comb_map
-    sum_map = CorxVar.summ.sum_map
-
-    #targ_map = CorxVar.targ.targ_map
-    #move_cmd = CorxVar.targ.move_cmd
-    #CoM = CorxVar.targ.CoM
-
-    hyperpre = CorxVar.hycx.pre_map
-    hyperpos = CorxVar.hycx.pos_map
-    orient_map = CorxVar.hycx.orient_map
-    bippre = CorxVar.bipo.pre_map
-    bippos = CorxVar.bipo.pos_map
-    bipole = CorxVar.bipo.out_map
+    """
+    invert_map = CorxVar.coord.sum_map
 
 
-    #data_S = [bippre, bippre, bippos, bippos]
-    #data_L = [bipole for j in range(4)]
+    #pre_out = sum(complex[0][o] for o in range(2 * orient))
+    #CoM = FNS().centroid(pre_out, size)
+    pos_out = invert_map
 
-    #data_S = [np.array([[FNS().cfns.laplac_gradient(q, p, size, size, 3)
-    #                     for p in range(2 * size)] for q in range(2 * size)]) for j in range(4)]
-    #data_L = [np.array([[FNS().cfns.laplac_gradient(q, p, size, size, 3)
-    #                     for p in range(2 * size)] for q in range(2 * size)]) for j in range(4)]
-    pre_out = sum(complex[0][o] for o in range(2 * orient))
-    pos_out = sum_map
-    CoM = FNS().centroid(pre_out, size)
     data_S = [pos_out] * 4
-    #data_L = [FNS().laplac_map(img_norm, 3, size) for j in range(4)]
     data_L = [img_norm for j in range(4)]
 
-    #data_S = [np.array([[FNS().cfns.gauss_gradient(q, p, size, size, -1, 4, j, 4 * orient)
-    #for p in range(2 * size)] for q in range(2 * size)]) for j in range(4)]
-    #data_L = [np.array([[FNS().cfns.gauss_gradient(q, p, size, size, 1, 4, j, 4 * orient)
-    #for p in range(2 * size)] for q in range(2 * size)]) for j in range(4)]
-    #data_S = [FNS().thresh_fn(data_S[j] - data_L[j], 0) for j in range(4)]
-    #data_L = [FNS().thresh_fn(data_L[j] - data_S[j], 0) for j in range(4)]
-    #input = 1/8 * np.ones((2 * size, 2 * size))
-    #for j in range(-5, 5):
-    #    for i in range(-5, 5):
-    #        input[j + size][i + size] = 1/2
-    #data_S = [FNS().simp_map(input, 0, 5, j, 4 * orient, size) for j in range(4)]
-    #data_L = [FNS().simp_map(input, 0, 10, j, 4 * orient, size) for j in range(4)]
     data = data_S, data_L
     Tst.Simple(data)
 
@@ -116,12 +85,9 @@ if __name__ == '__main__':
     #    for j in range(4):
     #        ax2d[i, j].invert_yaxis()
 
-    print("CoM is {com}".format(com=CoM))
+
     plt.show()
 
-# ---------------------------------------------------------------------------------------------------------------------
-# sVISION Module - compute visual percept in real-time using C extensions and gpu where images appear alternatively
-# btw the two sides and visual processing is assisted by eye-head coordination
 
 
 
