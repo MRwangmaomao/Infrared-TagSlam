@@ -1,111 +1,80 @@
 import numpy as np
 import random, os
-from PIL import Image
+import cv2 as cv
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from FUNCS import FNS
-from EXTRACT import CorxVar, CorxFun
 from CLASSFY import ArtVar, ArtFun
-from TRANSFM import SptVar, SptFun
+from EXTRACT import ExtrVar, ExtrFun
 from TESTS import BasTstVar, BasTstFun
 
 # ---------------------------------------------------------------------------------------------------------------------
-# combine cortx and artmap for real-time vision processing using c extensions and cuda
+
 
 if __name__ == '__main__':
     length = 10000
     interval = 1
-    size = 100
-    period = 10  # it is slow enough not to cause too much asynchronization in the recorded video
-    orient = 1
+    size = np.array((480, 640))
 
-    new_size = int((2 * size) / period)
     bot_num = 100
-    top_num = 5
-    para = (0.9, 0.9)
-    bot_size = (new_size, new_size, bot_num)
-    top_size = (1, 2, top_num)
+    top_num = 20
+    para = (0.99, 0.99)
+    bot_size = (size[0], size[1], bot_num)
+    top_size = (1, 4, top_num)  # binary of 9 is 1001
     bot_para = para
     top_para = para
 
-    set01 = []
-    set02 = []
-    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
+    set = []
+    curr_path = os.getcwd()
+    pare_path = os.path.dirname(curr_path)
+    dest_path = os.path.join(pare_path, 'Resource')
+
     for i in range(9):
         file = "SAMPLE0{}".format(i)
-        name = os.path.join(path, file + '.png')
-        if i < 4:
-            set01.append(name)
-        if i > 4:
-            set02.append(name)
-
-
-    top_zeros = np.zeros((top_num))
-    top_zeros[0] = 1
-    car_label = top_zeros
-
-    top_zeros = np.zeros((top_num))
-    top_zeros[1] = 1
-    pla_label = top_zeros
+        name = os.path.join(dest_path, file + '.png')
+        set.append((name, np.binary_repr(i)))  # the binary code is the unique id of the image, and leave it as string
+        # to be split into individual digit
 
     fig, ax = plt.subplots(2, 2)
 
     # ----------------------------------------------------------------------------------------------------------------
     # initialize variables
-    SptVar = SptVar(size, 10, 1, 10)
-    Spt = SptFun(SptVar)
 
-    label = np.random.randint(0, 2)
-    pick = FNS().delta_fn(label, 0) * random.choice(set01) + FNS().delta_fn(label, 1) * random.choice(set02)
-    #img_load = Image.open(pick)
-    #img_gray = img_load.convert('L')  # convert image to grayscale
-    img_gray = random.choice(Spt.Preproc(set01[0]))  # first input is car to be compatible w/ the label definitions
-    img_resize = img_gray.resize((2 * size, 2 * size))
-    img_norm = np.array(img_resize) / 255  # normalize it btw 0 and 1
+    name, id = random.choice(set)
 
+    ExtrVar = ExtrVar(name)
+    Ext = ExtrFun(ExtrVar)
 
-    CorxVar = CorxVar(img_norm, size, 2 * orient, 1, 2)
-    Corx = CorxFun(CorxVar)
-
-    ArtVar = ArtVar(period, bot_size, top_size, bot_para, top_para)
+    ArtVar = ArtVar(1, bot_size, top_size, bot_para, top_para)
     Art = ArtFun(ArtVar)
 
-    TstVar = BasTstVar(ax, period, size)
+    TstVar = BasTstVar(ax, 1, size)
     Tst = BasTstFun(TstVar)
 
     # ----------------------------------------------------------------------------------------------------------------
 
     def pract(t):
-        # update input image every 100 epochs
-        if t > 0:
-            CorxVar.label = np.random.randint(0, 2)
-            label = CorxVar.label
-            pick = FNS().delta_fn(label, 0) * random.choice(set01) + FNS().delta_fn(label, 1) * random.choice(set02)
-            #img_load = Image.open(pick)
-            #img_gray = img_load.convert('L')
-            img_gray = random.choice(Spt.Preproc(pick))
-            img_resize = img_gray.resize((2 * size, 2 * size))
-            img_norm = np.array(img_resize) / 255
-            CorxVar.img = img_norm
 
-        Corx.LGN()
-        Corx.Simple()
-        Corx.Complex()
+        name, id = random.choice(set)
 
-        img = CorxVar.img
-        label = CorxVar.label
-        top_input = FNS().delta_fn(label, 0) * np.array([(1, 0)]) + FNS().delta_fn(label, 1) * np.array([(0, 1)])
-        bot_input = Art.BotPrep(img, size)[0]
-        top_input = Art.TopPrep(top_input)
-        #Art.TopArt(top_input)  # remember to organize the labels in addition to categorize the images
+        ExtrVar.name = name
+        Ext.CompCents()
+        Ext.CompTransf()
+        output = Ext.RestoreImg() / 255
+
+        top_input = FNS().fill_arr(id)  # convert id into an array
+        bot_input = np.array((output, 1 - output))  # input is complement code
+        top_input = Art.TopPrep(top_input)  # both top and bot input are normalized
+
+        Art.TopArt(top_input)  # remember to organize the labels in addition to categorize the images
         Art.MidArt(bot_input, top_input)
 
         # input image, output image, coarse image, learned template; be careful coarse map need be based on centered
         # images
-        input = CorxVar.img
-        output = np.sum(CorxVar.cmpx.comb_map[0])
-        coarse = Art.BotPrep(input, size)[1]
+        input = ExtrVar.input
+        output = Ext.RestoreImg() / 255
+        coarse = output
         # template is of the active category
         top_ind = 0
         bot_ind = 0
@@ -118,10 +87,10 @@ if __name__ == '__main__':
             top_ind = ArtVar.top.sort_signal[0][0]
 
         # keep in mind ltm are complement code, so access is either the on channel or off channel
-        top_temp = ArtVar.top.top_ltm[top_ind][0]
-        bot_temp = ArtVar.bot.top_ltm[bot_ind][1]
+        top_templ = ArtVar.top.top_ltm[top_ind][0]
+        bot_templ = ArtVar.bot.top_ltm[bot_ind][1]
 
-        data = input, output, coarse, bot_temp
+        data = input, output, coarse, bot_templ
 
         count = (t + 1)
         active = (np.count_nonzero(ArtVar.top.committ), np.count_nonzero(ArtVar.bot.committ))
@@ -132,9 +101,9 @@ if __name__ == '__main__':
         ArtVar.score += FNS().delta_fn(crs_predict, top_predict)
         score = ArtVar.score
 
-        # be careful, it depends if the first category is car or plane
-        label = "set01" * FNS().delta_fn(crs_predict, car_label) + "set02" * FNS().delta_fn(crs_predict, pla_label)
-        #label = "set01" * FNS().delta_fn(top_predict, car_label) + "set02" * FNS().delta_fn(top_predict, pla_label)
+        # use decimal for display and binary for computation
+        label = int('{}'.format(id), 2)
+
 
         text = count, active, score, label
         Tst.RealTime(data, text)

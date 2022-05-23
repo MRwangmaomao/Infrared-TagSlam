@@ -53,13 +53,12 @@ class ArtFun:
         self.Art = ArtVar
         self.FNS = FNS()
 
-    # apply log polar, coarse code, and complement code transformation to input
-    # preprocessing also includes first center the input before log polar then again center the input after log polar
-    # and before coarse code
     def BotPrep(self, input, size):
         FNS = self.FNS
         period = self.Art.period
 
+        # EXTRACT.py handles the preprocessing
+        """
         # first center and shift
         centroid = nd.center_of_mass(input)
         first_transl = nd.shift(input, (size - centroid[0], size - centroid[1]), mode="nearest")
@@ -68,17 +67,18 @@ class ArtFun:
         # second center and shift
         centroid = nd.center_of_mass(logpol_map)
         second_transl = nd.shift(logpol_map, (size - centroid[0], size - centroid[1]), mode="nearest")
+        """
 
-        coarse_map = FNS.coarse_map(second_transl, period, size)
+        coarse_map = FNS.coarse_map(input, period, size)
         comple_map = FNS.comple_map(coarse_map)
-        out = comple_map
 
         return comple_map, coarse_map
 
     def TopPrep(self, input):
         FNS = self.FNS
-        out = 1 - input  # do not use FNS.comple_map for discrete labels
-        return out
+        norm = input
+        comple = 1 - input
+        return np.array((norm, comple))  # labels need normalize as well
 
     def TopChoc(self, input):
         size = self.Art.top_size[0] * self.Art.top_size[1]

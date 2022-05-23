@@ -1,5 +1,6 @@
 import numpy as np
 from PIL import Image
+import cv2 as cv
 
 from timeit import default_timer as tmt
 from CFNS import CyFns as cfns
@@ -42,10 +43,18 @@ class FNS:
         return rightout + leftout
 
     def delta_fn(self, x, a):
-        if np.all(x == a) == True:
+        if np.all(x == a) == True or np.all(x == a) == True:
             return 1
         else:
             return 0
+
+    def check_fn(self, x, a, thresh):
+        out = np.zeros(2)
+        for i in range(len(x)):
+            if 0 <= x[i] - a[i] <= thresh or 0 <= a[i] - x[i] <= thresh:
+                out[i] = 1
+        return out[0] * out[1]
+
 
     def cond_fn(self, x, a):
         out = np.heaviside(a - x, 0) * np.heaviside(x - -a, 0)
@@ -72,6 +81,88 @@ class FNS:
         return range(max(j - 1, 0), min(j + 1, size)), \
                range(max(i - 1, 0), min(i + 1, size))
 
+    # be careful, the angle is relative to the y-axis where left of y-axis is -ve angle and right of y-axis is +ve angle
+    # and suppose pixel format is (y, x) where large y is down and small y is up to match w/ the image format
+    def angle_fn(self, y, x):
+        pi = 3.14159
+        theta = 0
+
+        if x == 0 and y <= 0:
+            theta = 0
+
+        # there is singularity on x=0, y>0; suppose the angle is \pi
+        elif x == 0 and y > 0:
+            theta = pi
+
+
+        # arctan is btw -\pi/2 and \pi/2, need to separately consider btw lower left and upper left, and btw
+        # lower right and upper right
+        elif x > 0 and y >= 0:
+            theta = pi - np.arctan(x / (y + 0.01))
+
+        elif x > 0 and y <= 0:
+            theta = np.arctan(x / (-y + 0.01))
+
+        elif x < 0 and y <= 0:
+            theta = -np.arctan(-x / (-y + 0.01))
+
+        elif x < 0 and y >= 0:
+            theta = -pi + np.arctan(-x / (y + 0.01))
+
+        return theta
+
+    def fill_arr(self, x):
+        digits = [int(i) for i in x]  # suppose x is binary code in string format
+        size = len(digits)
+        out = np.zeros((4), dtype=int)  # suppose length is fixed at 4
+        for i in range(size):
+            out[i] = digits[i]
+        return np.array([out])  # make sure it is an array 1 x 4
+
+    def transfm_fn(self, name):
+        input = cv.imread(name)
+        img_size = input.shape[:2]
+        img_cent = np.array((260, 320))  # corresponding image center for image size (480, 640)
+
+        img_gray = cv.cvtColor(input, cv.COLOR_BGR2GRAY)
+        img_inv = cv.bitwise_not(img_gray)  # make sure convert background to black and object to white
+
+        # select random rotation
+        rand_ang = -40 + (40 - -40) * np.random.random()
+        mat_rotate = cv.getRotationMatrix2D(center=(img_cent[1], img_cent[0]), angle=rand_ang, scale=1)
+        img_rotate = cv.warpAffine(src=img_inv, M=mat_rotate, dsize=(img_size[1], img_size[0]))
+
+        # select random translation
+        rand_x = -30 + (30 - -30) * np.random.random()
+        rand_y = -20 + (20 - -20) * np.random.random()
+        mat_transl = np.array([[1, 0, rand_x], [0, 1, rand_y]], dtype=np.float32)
+        img_transl = cv.warpAffine(src=img_rotate, M=mat_transl, dsize=(img_size[1], img_size[0]))
+
+        return img_transl, rand_ang, (rand_y, rand_x)
+
+    # return unique elements in given list
+    def unique_fn(self, listpt):
+        out = []
+        for i in range(len(listpt)):
+            if listpt[i] not in out:
+                out.append(listpt[i])
+
+        return out
+
+    def norm_fn(self, x):
+        out = np.array(x)
+        return np.linalg.norm(out[1] - out[0])  # note subtraction is index 1 minus index 0
+
+    def dot_fn(self, x, y):
+        outX = np.array(x)
+        outY = np.array(y)
+        normX = self.norm_fn(x)
+        normY = self.norm_fn(y)
+        if normX != 0 and normY != 0:
+            out = np.dot(outX[1] - outX[0], outY[1] - outY[0]) / (normX * normY + 0.01)
+            return out
+        else:
+            return np.infty
 
     # be careful that use of LoG kernel requires finding the zero crossings to extract edges and it is not just applying
     # the kernel to the image

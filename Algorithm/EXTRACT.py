@@ -1,183 +1,296 @@
 import numpy as np
+import os, copy
+import cv2 as cv
 from FUNCS import FNS
-from scipy import ndimage as nd
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
 
-# variable class
-class CorxVar:
-    def __init__(self, img_input, size, orient, scale, gain):
-        self.img = img_input
-        self.label = 0
-        self.num = orient
-        self.size = size
-        self.scae = scale
-        self.gain = gain
-
-
-        self.lgnn = self.LGN(size)
-        self.simp = self.Simple(size, orient, scale)
-        self.cmpx = self.Complex(size, orient, scale)
-        self.coord = self.CoordSys(size)
-
-    class LGN:
-        def __init__(self, size):
-            self.on_map = np.zeros((2 * size, 2 * size))
-            self.off_map = np.zeros((2 * size, 2 * size))
-
-
-    class Simple:
-        def __init__(self, size, orient, scale):
-            self.left_on = np.empty((scale, orient), dtype=object)
-            self.left_off = np.empty((scale, orient), dtype=object)
-            self.right_on = np.empty((scale, orient), dtype=object)
-            self.right_off = np.empty((scale, orient), dtype=object)
-
-            for s in range(scale):
-                for k in range(orient):
-                    self.left_on[s, k] = np.zeros((2 * size, 2 * size))
-                    self.left_off[s, k] = np.zeros((2 * size, 2 * size))
-                    self.right_on[s, k] = np.zeros((2 * size, 2 * size))
-                    self.right_off[s, k] = np.zeros((2 * size, 2 * size))
+class ExtrVar:
+    def __init__(self, name):
+        self.name = name
+        self.input = 0
+        self.img_size = np.array((480, 640))
+        self.img_cent = np.array((260, 320))
+        self.contour = np.zeros(self.img_size, dtype=np.uint8)
+        self.downSide = []
+        self.leftSide = []
+        self.upSide = []
+        self.rightSide = []
+        self.centers = []
+        self.box = 0
+        self.pre_transl = 0
+        self.pre_rotate = 0
+        self.pos_transl = 0
+        self.pos_rotate = 0
+        self.cent_order = []
 
 
-
-    class Complex:
-        def __init__(self, size, orient, scale):
-            self.comb_map = np.empty((scale, orient), dtype=object)
-
-            for s in range(scale):
-                for k in range(orient):
-                    self.comb_map[s, k] = np.zeros((2 * size, 2 * size))
-
-    class CoordSys:
-        def __init__(self, size):
-            self.sum_map = np.zeros((2 * size, 2 * size))
-            self.invert_map = np.zeros((2 * size, 2 * size))
-
-            self.rot_ang = 0
-
-            # it is a pair of points in x-direction and y-direction
-            self.max_x = np.zeros((2, 2))
-            self.max_y = np.zeros((2, 2))
-
-            # recover the 4 points w/ holes
-
-
-
-class CorxFun:
-    def __init__(self, CorxVar):
-        self.Corx = CorxVar
-        self.size = CorxVar.size
-        self.num = CorxVar.num
-        self.scae = CorxVar.scae
-        self.gain = CorxVar.gain
+class ExtrFun:
+    def __init__(self, ExtrVar):
+        self.Ext = ExtrVar
         self.FNS = FNS()
 
-    def LGN(self):
+    def CompCents(self):
+        name = self.Ext.name
         FNS = self.FNS
-        size = self.size
-        num = self.num
-        image = self.Corx.img
-        decay = 1
-        spont = 2
-        on_size = 1
-        off_size = 2
-        on_coeff = 5
-        off_coeff = 3
 
-        on_conv = FNS.lgnn_map(image, on_size, num, size)
-        off_conv = FNS.lgnn_map(image, off_size, num, size)
+        rand_input = FNS.transfm_fn(name)
+        self.Ext.input = rand_input[0]
+        self.Ext.pre_rotate = rand_input[1]
+        self.Ext.pre_transl = rand_input[2]
 
-        on_top_sum = FNS.thresh_fn(on_coeff * on_conv - off_coeff * off_conv, 0)
-        off_top_sum = FNS.thresh_fn(decay * spont + (off_coeff * off_conv - on_coeff * on_conv), 0)
+        ret, thresh = cv.threshold(self.Ext.input, 127, 255, 0)
+        contours, hierarchy = cv.findContours(thresh, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE)
 
-        bot_sum = decay + on_conv + off_conv
+        # draw contours of holes
+        for i in range(len(contours)):
+            if hierarchy[0][i][3] != -1:
+                cv.drawContours(self.Ext.contour, contours, i, (255, 0, 0), 1)
 
-        self.Corx.lgnn.on_map = on_top_sum / bot_sum
-        self.Corx.lgnn.off_map = off_top_sum / bot_sum
+        # reset centers list
+        self.Ext.centers = []
 
-    def Simple(self):
+        # compute centers of holes
+        for i in range(len(contours)):
+            if hierarchy[0][i][3] != -1:
+                M = cv.moments(contours[i])
+                if M['m00'] != 0:
+                    cx = int(M['m10'] / M['m00'])
+                    cy = int(M['m01'] / M['m00'])
+                    self.Ext.centers.append([cy, cx])
+                    self.Ext.cent_order.append(i)
+
+
+    def CompTransf(self):
         FNS = self.FNS
-        size = self.size
-        num = self.num
-        scale = self.scae
-        gain = self.gain
-        on_map = self.Corx.lgnn.on_map
-        off_map = self.Corx.lgnn.off_map
-        contrast = 1.1
-
-        for s in range(scale):
-            for k in range(num):
-                left_on = FNS.simp_map(on_map, -1, (s + 1) * gain, k, num, size)
-                left_off = FNS.simp_map(off_map, -1, (s + 1) * gain, k, num, size)
-
-                right_on = FNS.simp_map(on_map, +1, (s + 1) * gain, k, num, size)
-                right_off = FNS.simp_map(off_map, +1, (s + 1) * gain, k, num, size)
-
-                self.Corx.simp.left_on[s, k] = FNS.thresh_fn(left_on - contrast * right_on, 0)
-                self.Corx.simp.left_off[s, k] = FNS.thresh_fn(left_off - contrast * right_off, 0)
-
-                self.Corx.simp.right_on[s, k] = FNS.thresh_fn(right_on - contrast * left_on, 0)
-                self.Corx.simp.right_off[s, k] = FNS.thresh_fn(right_off - contrast * left_off, 0)
+        img_cent = self.Ext.img_cent
+        cents = self.Ext.centers
+        order = self.Ext.cent_order
 
 
-    def Complex(self):
-        FNS = self.FNS
-        num = self.num
-        scale = self.scae
+        # ---------------------------------------------------------------------
+        # make sure to reset the sides before add in the pts
 
-        for s in range(scale):
-            for k in range(num):
-                self.Corx.cmpx.comb_map[s, k] = self.Corx.simp.left_on[s, k] + self.Corx.simp.left_off[s, k] + \
-                                            self.Corx.simp.right_on[s, k] + self.Corx.simp.right_off[s, k]
+        # reset leftSide and downSide
+        self.Ext.leftSide = []
+        self.Ext.downSide = []
 
+        # idea is first find leftSide, then check for the two pts in leftSide their angles w/ the
+        # remaining two pts in cents to exhaust all combinations
 
-    # extract the coordinate system and compute the angle of rotation
-    def CoordSys(self):
-        FNS = self.FNS
-        size = self.size
-        num = self.num
-        input = sum(self.Corx.cmpx.comb_map[0][o] for o in range(num))
-        decay = 1
-        on_size = (size / 30) * 2
-        off_size = 2 * on_size
-        on_coeff = 5
-        off_coeff = 3
-
-        on_conv = FNS.circ_map(input, on_size, size)
-        off_conv = FNS.circ_map(input, off_size, size)
-
-        top_sum = FNS.thresh_fn(on_coeff * on_conv - off_coeff * off_conv, 0.0)
-
-        bot_sum = decay + on_conv + off_conv
-
-        comb_rat = top_sum / bot_sum
-        comb_max = np.max(comb_rat)
-
-        sum_map = FNS.thresh_fn((comb_rat / comb_max) ** 2, 0.55)
-
-        self.Corx.coord.sum_map = sum_map
+        # identify leftSide
+        leftSide = []
+        max_dist = 0
+        for pt01 in cents:
+            for pt02 in cents:
+                dist = np.linalg.norm(np.array(pt01) - np.array(pt02))
+                if dist > 0 and dist > max_dist:
+                    max_dist = dist
+                    leftSide = [pt01, pt02]
 
 
-        # extract the coordinate system
+        # identify downSide
+        def unique_fn(listpt):
+            out = []
+            for i in range(len(listpt)):
+                if listpt[i] not in out:
+                    out.append(listpt[i])
+            return out
 
-        # find points w/ largest distance in x-direction and y-direction, e.g., this requires comparing each point
-        # in the image w/ every point in another copy of the image, each update stores a pair of points
-        for j in range(2 * size):
-            for i in range(2 * size):
-                if sum_map[j][i] > 0.01:
-                    for q in range(2 * size):
-                        for p in range(2 * size):
-                            if sum_map[q][p] > 0.01:
-                                pass
+        fringe = copy.copy(cents)
+        for pt in unique_fn(leftSide):
+            fringe.remove(pt)
+
+        testSide = np.zeros((4), dtype=object)
+        testSide[0] = [leftSide[0], fringe[0]]
+        testSide[1] = [leftSide[0], fringe[1]]
+        testSide[2] = [leftSide[1], fringe[0]]
+        testSide[3] = [leftSide[1], fringe[1]]
+
+        referSide = np.zeros((4), dtype=object)
+        referSide[0] = [leftSide[0], leftSide[1]]
+        referSide[1] = [leftSide[0], leftSide[1]]
+        referSide[2] = [leftSide[1], leftSide[0]]
+        referSide[3] = [leftSide[1], leftSide[0]]
+
+        downNorm = np.zeros((4))
+        downPerp = np.zeros((4))
+        for i in range(4):
+            downNorm[i] = FNS.norm_fn(testSide[i])
+            downPerp[i] = FNS.dot_fn(testSide[i], referSide[i])
+
+        # find pair w/ minimum angle
+        index = np.argmin(downPerp)
+
+        self.Ext.leftSide = referSide[index]
+        self.Ext.downSide = testSide[index]
+
+
+       # --------------------------------------------------------------------------------------------------
+
+        leftSide = self.Ext.leftSide
+        downSide = self.Ext.downSide
+
+        common = leftSide[0]
+        min_dist = downNorm[index]
+
+        # reset upSide and rightSide
+        self.Ext.upSide = []
+        self.Ext.rightSide = []
+
+        # identify upSide and rightSide
+        upSide = []
+        rightSide = []
+
+        # downSide is associated w/ rightSide, not upSide
+        for pt in downSide:
+            dist = np.linalg.norm(np.array(pt) - np.array(common))
+            if dist > 0:
+                rightSide.append(pt)
+
+        # leftSide is associated w/ upSide, not rightSide
+        for pt in leftSide:
+            dist = np.linalg.norm(np.array(pt) - np.array(common))
+            if dist > 0:
+                upSide.append(pt)
+
+
+        # find pt x st dist(upSide_01, x) = dist(downSide_01, downSide_02) = min_dist, and
+        # dist(rightSide_02, x) = dist(leftSide_01, leftSide_02) = max_dist
+
+        def root_fn(x):
+            func = []
+            # suppose the common pt is the only pt in rightSide and upSide
+            func.append((upSide[0][0] - x[0]) ** 2 + (upSide[0][1] - x[1]) ** 2 - min_dist ** 2)
+            func.append((rightSide[0][0] - x[0]) ** 2 + (rightSide[0][1] - x[1]) ** 2 - max_dist ** 2)
+
+            return func
+
+        # the root depends on the initial condition, it is better choose near the image center
+        root = list(np.int0(fsolve(root_fn, img_cent)))
+        self.Ext.upSide.append(root)
+        self.Ext.upSide.append(upSide[0])
+
+        self.Ext.rightSide.append(root)
+        self.Ext.rightSide.append(rightSide[0])
+
+
+        # direct computation of box centroid for translation and rotation
+        leftSide = np.array(self.Ext.leftSide)
+        rightSide = np.array(self.Ext.rightSide)
+        leftMid = leftSide[0] + 0.5 * (leftSide[1] - leftSide[0])
+        rightMid = rightSide[1] + 0.5 * (rightSide[0] - rightSide[1])
+
+        centroid = np.int0(leftMid + 0.5 * (rightMid - leftMid))
+
+        # --------------------------------------------------------------------------------------------------------
+        # draw bounding box; drawing order seems strange, it is criss-crossing from down right, up left, up right,
+        # down left
+        self.Ext.box = [self.Ext.downSide[1], self.Ext.upSide[1], self.Ext.rightSide[0], self.Ext.leftSide[0]]
+
+        box = np.array(self.Ext.box)
+        rev_box = box[:, (1, 0)]
+        rect = cv.polylines(self.Ext.contour, [rev_box], True, (255, 0, 0), 1)
+        contours, hierarchy = cv.findContours(rect, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE)
+
+        #cnt = contours[0]
+        #M = cv.moments(cnt)
+        #cent_y = int(M['m01'] / M['m00'])
+        #cent_x = int(M['m10'] / M['m00'])
+
+        #cv.drawContours(self.Ext.contour, cnt, 0, (255, 0, 0), 1)
 
 
 
-        # compute the angle of rotation
+        # --------------------------------------------------------------------------------------------------------
+        # draw polygon formed by the centers; drawing order seems to be from down up
+        polygon = [self.Ext.downSide[1], self.Ext.downSide[0], fringe[(index + 1) % 2], self.Ext.leftSide[1]]
+        polygon = np.array(polygon)
+        rev_poly = polygon[:, (1, 0)]
+        poly = cv.polylines(self.Ext.contour, [rev_poly], True, (255, 0, 0), 1)
+        contours, hierarchy = cv.findContours(poly, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE)
+
+        #cnt = contours[0]
+        #cv.drawContours(self.Ext.contour, cnt, 0, (255, 0, 0), 1)
+
+        # --------------------------------------------------------------------
+
+        # compute translation
+        self.Ext.pos_transl = centroid - img_cent
 
 
-    def CoordSys01(self):
-        input = self.Corx.img
-        FNS = self.FNS
-        size = self.size
-        on_size = (size / 30) * 2
-        self.Corx.coord.invert_map = FNS.circ_map(input, on_size, size)
+        # compute rotation; need to translate before compute angle
+
+        upLine = np.array(self.Ext.upSide) - self.Ext.pos_transl
+        midpt = upLine[0] + 0.5 * (upLine[1] - upLine[0])
+
+        midpt = midpt - img_cent
+        angle = FNS.angle_fn(midpt[0], midpt[1])
+        self.Ext.pos_rotate = np.degrees(angle)
+
+
+
+    def RestoreImg(self):
+        input = self.Ext.input
+        img_cent = self.Ext.img_cent
+        img_size = self.Ext.img_size
+        transl = self.Ext.pos_transl
+        rotate = self.Ext.pos_rotate
+
+        mat_transl = np.array([[1, 0, -transl[1]], [0, 1, -transl[0]]], dtype=np.float32)
+        pos_transl = cv.warpAffine(src=input, M=mat_transl, dsize=(img_size[1], img_size[0]))
+
+        mat_rotate = cv.getRotationMatrix2D(center=(img_cent[1], img_cent[0]), angle=rotate, scale=1)
+        pos_rotate = cv.warpAffine(src=pos_transl, M=mat_rotate, dsize=(img_size[1], img_size[0]))
+
+        return pos_rotate
+
+
+if __name__ == '__main__':
+    fig, ax = plt.subplots(1, 3)
+    for i in range(3):
+        ax[i].xaxis.set_major_locator(plt.NullLocator())
+        ax[i].yaxis.set_major_locator(plt.NullLocator())
+
+    curr_path = os.getcwd()
+    pare_path = os.path.dirname(curr_path)
+    dest_path = os.path.join(pare_path, 'Resource')
+
+    file = "SAMPLE0{}".format(np.random.randint(0, 10))
+    name = os.path.join(dest_path, file + '.png')
+
+    ExtrVar = ExtrVar(name)
+    Ext = ExtrFun(ExtrVar)
+
+    img_size = ExtrVar.img_size
+    img_cent = ExtrVar.img_cent
+
+    # --------------------------------------------------------------------------------
+
+    Ext.CompCents()
+    Ext.CompTransf()
+
+    input = ExtrVar.input
+    pre_rotate = ExtrVar.pre_rotate
+    pre_transl = ExtrVar.pre_transl
+    box = ExtrVar.box
+    cents = ExtrVar.centers
+    downSide = np.array(ExtrVar.downSide) - ExtrVar.pos_transl
+    upSide = np.array(ExtrVar.upSide) - ExtrVar.pos_transl
+    pos_rotate = ExtrVar.pos_rotate
+    pos_transl = ExtrVar.pos_transl
+    contour = ExtrVar.contour
+    output = Ext.RestoreImg()
+    normz = output / 255
+
+    # -------------------------------------------------------------------------------------------------------------
+    ax[0].imshow(input)
+    ax[0].set_title("input image")
+    ax[1].imshow(contour)
+    ax[1].set_title("contour")
+    ax[2].imshow(output)
+    ax[2].set_title("output image")
+    plt.show()
+    #cv.imshow('image', input)
+    #cv.imshow('image', output)
+    #cv.waitKey(0)

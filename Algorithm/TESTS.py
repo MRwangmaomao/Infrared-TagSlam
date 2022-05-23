@@ -175,39 +175,35 @@ class ArtTstFun:
 class BasTstVar:
     def __init__(self, ax, period, size):
         self.ax = ax
-        self.size = size
-
-        self.new_size = int(2 * size / period)
+        self.size = size  # suppose size = (480, 640)
 
         for i in range(2):
             for j in range(2):
                 self.ax[i, j].xaxis.set_major_locator(plt.NullLocator())
                 self.ax[i, j].yaxis.set_major_locator(plt.NullLocator())
-                #self.ax[0, j].set_xlim(0, 2 * size)
-                #self.ax[0, j].set_ylim(0, 2 * size)
-                self.ax[1, j].set_xlim(0, self.new_size)
-                self.ax[1, j].set_ylim(0, self.new_size + 20)
+                self.ax[1, j].set_xlim(0, self.size[1])
+                self.ax[1, j].set_ylim(0, self.size[0] + 20)
 
         self.ax[0, 0].set_title('input image')
         self.ax[0, 1].set_title('output image')
         self.ax[1, 0].set_title('coarse image')
         self.ax[1, 1].set_title('learned template')
 
-        X = np.arange(0, 2 * size, 1)
-        Y = np.arange(0, 2 * size, 1)
+        X = np.arange(0, self.size[1], 1)
+        Y = np.arange(0, self.size[0], 1)
         X, Y = np.meshgrid(X, Y)
-        Z = np.random.rand(2 * size, 2 * size)
+        Z = np.random.rand(self.size[0], self.size[1])
         self.input = self.ax[0, 0].pcolor(X, Y, Z, shading='auto', cmap='gray')
         self.output = self.ax[0, 1].pcolor(X, Y, Z, shading='auto', cmap='gray')
 
-        X = np.arange(0, self.new_size, 1)
-        Y = np.arange(0, self.new_size, 1)
+        X = np.arange(0, self.size[1], 1)
+        Y = np.arange(0, self.size[0], 1)
         X, Y = np.meshgrid(X, Y)
-        Z = np.random.rand(self.new_size, self.new_size)
+        Z = np.random.rand(self.size[0], self.size[1])
         self.coarse = self.ax[1, 0].pcolor(X, Y, Z, shading='auto', cmap='gray')
         self.template = self.ax[1, 1].pcolor(X, Y, Z, shading='auto', cmap='gray')
 
-        self.text = self.ax[1, 1].text(0, self.new_size + 15, "Count = {Count}; Active = {Active}; Score = {Score}; "
+        self.text = self.ax[1, 1].text(0, self.size[0] + 15, "Count = {Count}; Active = {Active}; Score = {Score}; "
                                 "Percent = {Percent}; Predict = {Predict}".format(Count=0, Active=(0, 0), Score=0, Percent=0, Predict=0))
         # text need be within the x_lim and y_lim of the axis, else it will not be displayed
 
@@ -216,7 +212,6 @@ class BasTstFun:
         self.FNS = FNS()
         self.Bas = BasTstVar
         self.size = self.Bas.size
-        self.new_size = self.Bas.new_size
 
     def RealTime(self, data, text):
         FNS = self.FNS
@@ -228,7 +223,6 @@ class BasTstFun:
 
 
         count, active, score, predict = text
-        #count = FNS.delta_fn(count, 0) * 1 + (1 - FNS.delta_fn(count, 0)) * count
         self.Bas.text.set_text("Count = {Count}; Active = {Active}; Score = {Score}; "
                                 "Percent = {Percent}; Predict = {Predict}".format(Count=count, Active=active,
                                                              Score=score, Percent=round(score / float(count), 2), Predict=predict))

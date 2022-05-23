@@ -4,7 +4,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from EXTRACT import CorxVar, CorxFun
+from CORTX import CorxVar, CorxFun
 from TESTS import VisTstVar, VisTstFun
 from FUNCS import FNS
 
@@ -22,24 +22,14 @@ if __name__ == '__main__':
     # ----------------------------------------------------------------------------------------------------------------
     # initialize variables
 
-    car_name = ("MICRO.png", "VAN.png", "BIG_TRUCK.png", "BIG_TRUCK.png")
-    pla_name = ("11plane.jpg", "24plane.jpg", "41plane.jpg", "41plane.jpg")
-
-    label = np.random.randint(0, 2)
-    #pick = FNS().delta_fn(label, 0) * random.choice(car_name) + FNS().delta_fn(label, 1) * random.choice(pla_name)
-
-
-    # ----------------------------
     path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
     pick = name = os.path.join(path, "marker_07" + '.png')
-    # ----------------------------
-
 
     img_load = Image.open(pick)
     img_gray = img_load.convert('L')  # convert image to grayscale
 
     #fn = lambda x: 255 if x > 140 else 0
-    #img_bw = img_load.convert('L').point(fn, mode='1')  # convert figure to white and background to black
+    #mg_bw = img_load.convert('L').point(fn, mode='1')  # convert figure to white and background to black
 
     img_resize = img_gray.resize((2 * size, 2 * size))
     img_norm = np.array(img_resize) / 255   # normalize it btw 0 and 1
@@ -56,23 +46,15 @@ if __name__ == '__main__':
     Corx.LGN()
     Corx.Simple()
     Corx.Complex()
-    Corx.CoordSys()
+    Corx.SumBdry()
 
-    """
-    lgn_on = CorxVar.lgnn.on_map
-    lgn_off = CorxVar.lgnn.off_map
-    left_on = CorxVar.simp.left_on
-    left_off = CorxVar.simp.left_off
-    right_on = CorxVar.simp.right_on
-    right_off = CorxVar.simp.right_off
-    complex = CorxVar.cmpx.comb_map
-    """
-    invert_map = CorxVar.coord.sum_map
+
+    sum_map = CorxVar.sbdry.sum_map
 
 
     #pre_out = sum(complex[0][o] for o in range(2 * orient))
     #CoM = FNS().centroid(pre_out, size)
-    pos_out = invert_map
+    pos_out = sum_map
 
     data_S = [pos_out] * 4
     data_L = [img_norm for j in range(4)]

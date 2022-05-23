@@ -122,6 +122,7 @@ if __name__ == '__main__':
             count_cir += 1
             intr_set.remove(pt)
 
-    plt.savefig("/home/jackson/Infrared-TagSlam/Resource/SAMPLE00.png")
+    plt.axis('off')
+    plt.savefig("/home/jackson/Infrared-TagSlam/Resource/SAMPLE09.png")
 
     plt.show()

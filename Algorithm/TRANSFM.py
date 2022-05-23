@@ -1,9 +1,9 @@
-import os
+import os, random
 import numpy as np
-import random
+import cv2 as cv
 from PIL import Image
-import matplotlib.pyplot as plt
 from scipy import ndimage as nd
+import matplotlib.pyplot as plt
 from FUNCS import FNS
 from TESTS import VisTstVar, VisTstFun
 
@@ -61,7 +61,7 @@ class SptFun:
         # 25*1.2=30 with a difference of 5 pixels at most. Thus a canvas size 200x100 can contain all the spatially
         # transformed images that are different in orientation, position, and scale.
 
-        rand_scale = [1.0 + np.random.random() for i in range(3)]
+        rand_scale = [1.0 + 0 * np.random.random() for i in range(3)]
         rand_orient = [(180 * np.random.random()) for i in range(3)]  # orient in degrees
         rand_posit = [(-30 + 60 * np.random.random(), -20 + 40 * np.random.random()) for i in range(3)]
 
@@ -102,6 +102,27 @@ class SptFun:
         return posit  # there is a total of 27 spatially transformed images for each type
 
 
+    def Transfm(self, name):
+
+        input = cv.imread(name)
+        img_size = input.shape[:2]
+        img_cent = np.array((260, 320))  # corresponding image center for the given image size
+
+        img_gray = cv.cvtColor(input, cv.COLOR_BGR2GRAY)
+        img_inv = cv.bitwise_not(img_gray)
+
+        # select random rotation
+        rand_ang = -40 + (40 - -40) * np.random.random()
+        mat_rotate = cv.getRotationMatrix2D(center=(img_cent[1], img_cent[0]), angle=rand_ang, scale=1)
+        img_rotate = cv.warpAffine(src=img_inv, M=mat_rotate, dsize=(img_size[1], img_size[0]))
+
+        # select random translation
+        rand_x = -30 + (30 - -30) * np.random.random()
+        rand_y = -20 + (20 - -20) * np.random.random()
+        mat_transl = np.array([[1, 0, rand_x], [0, 1, rand_y]], dtype=np.float32)
+        img_transl = cv.warpAffine(src=img_rotate, M=mat_transl, dsize=(img_size[1], img_size[0]))
+
+        return img_transl
 
 
 if __name__ == '__main__':
@@ -119,10 +140,13 @@ if __name__ == '__main__':
 
     set01 = []
     set02 = []
-    path = os.path.dirname("/home/jackson/Infrared-TagSlam/Resource/")
+    curr_path = os.getcwd()
+    pare_path = os.path.dirname(curr_path)
+    dest_path = os.path.join(pare_path, 'Resource')
+
     for i in range(9):
         file = "SAMPLE0{}".format(i)
-        name = os.path.join(path, file + '.png')
+        name = os.path.join(dest_path, file + '.png')
         if i < 4:
             set01.append(name)
         if i > 4:
@@ -132,19 +156,19 @@ if __name__ == '__main__':
     seq01 = []
     seq02 = []
     for i in range(4):
-        seq01.append(random.choice(Spt.Preproc(set01[i])))
-        seq02.append(random.choice(Spt.Preproc(set02[i])))
+        seq01.append(Spt.Transfm(set01[i]))
+        seq02.append(Spt.Transfm(set02[i]))
 
-    data_S = [seq01[i] for i in range(4)]
-    data_L = [seq02[i] for i in range(4)]
+    for i in range(4):
+        ax[0, i].imshow(seq01[i])
+        ax[1, i].imshow(seq02[i])
 
-    data = data_S, data_L
-    Tst.Simple(data)
 
     # flip y-axis upside down
-    for i in range(2):
-        for j in range(4):
-            ax[i, j].invert_yaxis()
+    #for i in range(2):
+    #    for j in range(4):
+    #        ax[i, j].invert_yaxis()
+
 
     plt.show()
 
@@ -152,7 +176,7 @@ if __name__ == '__main__':
 """
 To-do:
 
-1. test the tranlation, rotation and scaling transformations; generate a sequence of image frames of the same image
+1. test the translation, rotation and scaling transformations; generate a sequence of image frames of the same image
 that translates the centroid leftward, rightward, upward, downward, or a mix of the movement directions; 
 
 
