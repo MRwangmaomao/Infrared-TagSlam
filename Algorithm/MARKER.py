@@ -4,6 +4,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptc
 
+
 class MarVar:
     def __init__(self, input):
         self.wid = 11
@@ -47,17 +48,8 @@ class MarFun:
     def __init__(self, MarVar):
         self.Mar = MarVar
 
-
     def genSample(self):
         pass
-
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
