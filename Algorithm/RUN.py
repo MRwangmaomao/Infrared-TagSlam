@@ -26,13 +26,11 @@ if __name__ == '__main__':
     top_para = para
 
     set = []
-    curr_path = os.getcwd()
-    pare_path = os.path.dirname(curr_path)
-    dest_path = os.path.join(pare_path, 'Resource')
+    dirPath = os.path.join(os.path.abspath(".") + os.path.sep + '..', 'Resource')
 
     for i in range(9):
         file = "SAMPLE0{}".format(i)
-        name = os.path.join(dest_path, file + '.png')
+        name = os.path.join(dirPath, file + '.png')
         set.append((name, np.binary_repr(i)))  # the binary code is the unique id of the image, and leave it as string
         # to be split into individual digit
 

@@ -140,13 +140,11 @@ if __name__ == '__main__':
 
     set01 = []
     set02 = []
-    curr_path = os.getcwd()
-    pare_path = os.path.dirname(curr_path)
-    dest_path = os.path.join(pare_path, 'Resource')
+    dirPath = os.path.join(os.path.abspath(".") + os.path.sep + '..', 'Resource')
 
     for i in range(9):
         file = "SAMPLE0{}".format(i)
-        name = os.path.join(dest_path, file + '.png')
+        name = os.path.join(dirPath, file + '.png')
         if i < 4:
             set01.append(name)
         if i > 4:

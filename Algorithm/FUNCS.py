@@ -326,32 +326,5 @@ class FNS:
             return np.zeros(2)
 
 
-def pysum(map1, map2, size):
-    return np.array(
-        [[[np.sum(map1[s] * map2[s][j][i]) for i in range(2 * size)] for j in range(2 * size)] for s in range(2)])
 
-
-if __name__ == '__main__':
-    FNS = FNS()
-    size = 20
-    num = 2 * size
-
-    map1 = np.random.randint(0, 10, (2, 2 * size, 2 * size), dtype=np.int32)
-    map2 = np.random.randint(0, 10, (2, 2 * size, 2 * size, 2 * size, 2 * size), dtype=np.int32)
-
-    start = tmt()
-    pyarr = pysum(map1, map2, size)
-    py = tmt() - start
-
-    start = tmt()
-    cyarr = 0
-    for j in range(400):
-        for i in range(200):
-            cyarr += 1
-    cy = tmt() - start
-
-    print(cy, py)
-    print('Cython is {}x faster'.format(py / cy))
-    print(np.array_equal(pyarr, cyarr))
-    # print(pyarr, cyarr)
 

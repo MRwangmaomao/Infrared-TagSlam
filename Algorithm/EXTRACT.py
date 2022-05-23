@@ -291,6 +291,3 @@ if __name__ == '__main__':
     ax[2].imshow(output)
     ax[2].set_title("output image")
     plt.show()
-    #cv.imshow('image', input)
-    #cv.imshow('image', output)
-    #cv.waitKey(0)
